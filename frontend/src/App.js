@@ -15,7 +15,7 @@ const CONTRACTS = {
     reddioDevnet: {
         address: '0xYourReddioDevnetContractAddress',
         usdt: '0x2Dc0A25109caBF353278120E98924D741bd4B177',
-        abi: MonopolyGameABI, // 使用导入的 ABI
+        abi: UsdtABI, // 使用导入的 ABI
     },
 };
 
