@@ -13,7 +13,7 @@ const CONTRACTS = {
         abi: MonopolyGameABI, // 使用导入的 ABI
     },
     reddioDevnet: {
-        address: '0xc0a66649a36d109e34b2056c19844118dcb6d982',
+        address: '0x92B0E62e922508814Fe5f4E68670eA32FBB5832e',
         usdt: '0x2Dc0A25109caBF353278120E98924D741bd4B177',
         abi: MockUsdtABI, // 使用导入的 ABI
     },
