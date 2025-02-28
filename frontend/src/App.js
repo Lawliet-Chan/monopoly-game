@@ -4,7 +4,7 @@ import Web3 from 'web3';
 import PlayerList from './components/PlayerList';
 import GameBoard from './components/GameBoard';
 import MonopolyGameABI from './abis/MonopolyGame.json'; // 导入 MonopolyGame ABI
-import UsdtABI from './abis/USDT.json'; // 导入 USDT ABI
+import MockUsdtABI from './abis/MockUSDT.json'; // 导入 MockUSDT ABI
 
 const CONTRACTS = {
     sepolia: {
@@ -13,9 +13,9 @@ const CONTRACTS = {
         abi: MonopolyGameABI, // 使用导入的 ABI
     },
     reddioDevnet: {
-        address: '0xYourReddioDevnetContractAddress',
+        address: '0xc0a66649a36d109e34b2056c19844118dcb6d982',
         usdt: '0x2Dc0A25109caBF353278120E98924D741bd4B177',
-        abi: UsdtABI, // 使用导入的 ABI
+        abi: MockUsdtABI, // 使用导入的 ABI
     },
 };
 
@@ -66,7 +66,7 @@ function App() {
             setAccount(accounts[0]);
             const contractInstance = new web3Instance.eth.Contract(CONTRACTS[network].abi, CONTRACTS[network].address);
             setContract(contractInstance);
-            const usdtContractInstance = new web3Instance.eth.Contract(UsdtABI, CONTRACTS[network].usdt);
+            const usdtContractInstance = new web3Instance.eth.Contract(MockUsdtABI, CONTRACTS[network].usdt);
             setUsdtContract(usdtContractInstance);
         } else {
             alert('Please install MetaMask!');
