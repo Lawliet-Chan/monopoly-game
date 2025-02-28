@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const { ethers } = require("ethers"); // 显式导入 ethers
 
 async function main() {
     const [deployer] = await hre.ethers.getSigners();
@@ -10,8 +11,8 @@ async function main() {
         console.log("Deploying MockUSDT...");
         const mockUSDT = await MockUSDT.deploy();
         console.log("Waiting for MockUSDT deployment...");
-        await mockUSDT.waitForDeployment(); // 替换 .deployed()，等待部署完成
-        console.log("MockUSDT deployed to:", mockUSDT.target); // 使用 .target 而非 .address
+        await mockUSDT.waitForDeployment();
+        console.log("MockUSDT deployed to:", mockUSDT.target);
 
         // 部署 MonopolyGame
         const MonopolyGame = await hre.ethers.getContractFactory("MonopolyGame");
@@ -23,10 +24,10 @@ async function main() {
 
         // 验证部署者余额
         const deployerBalance = await mockUSDT.balanceOf(deployer.address);
-        console.log(`Deployer balance: ${hre.ethers.utils.formatUnits(deployerBalance, 6)} USDT`);
+        console.log(`Deployer balance: ${ethers.formatUnits(deployerBalance, 6)} USDT`); // 使用 ethers.formatUnits
     } catch (error) {
         console.error("Deployment failed:", error);
-        throw error; // 确保错误被抛出
+        throw error;
     }
 }
 
