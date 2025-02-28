@@ -1,20 +1,21 @@
 import React from 'react';
 
 function GameBoard({ players }) {
-    // 简单模拟一个 4x4 格子的大富翁棋盘
-    const board = Array(16).fill(null);
+    const board = Array(16).fill(null).map((_, idx) => ({
+        index: idx,
+        owner: players.find(p => p.position === idx)?.id || '',
+    }));
 
     return (
         <div className="game-board">
             <h2>Game Board</h2>
             <div className="board-grid">
-                {board.map((_, index) => (
-                    <div key={index} className="board-cell">
-                        {players.some(p => p.position === index) ? 'P' : index}
+                {board.map(cell => (
+                    <div key={cell.index} className="board-cell">
+                        {cell.index} {cell.owner ? `(${cell.owner.slice(0, 6)}...)` : ''}
                     </div>
                 ))}
             </div>
-            <p>Note: This is a simplified board. Players start at 0.</p>
         </div>
     );
 }

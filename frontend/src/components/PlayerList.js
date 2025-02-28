@@ -7,7 +7,7 @@ function PlayerList({ players }) {
             <ul>
                 {players.map((player, index) => (
                     <li key={index}>
-                        {player.id}: {player.game_coins} coins ({player.usdt_locked} USDT locked)
+                        {player.id.slice(0, 6)}...: {player.game_coins} coins, Position: {player.position}
                     </li>
                 ))}
             </ul>
