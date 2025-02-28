@@ -3,33 +3,71 @@ import axios from 'axios';
 import Web3 from 'web3';
 import PlayerList from './components/PlayerList';
 import GameBoard from './components/GameBoard';
+import MonopolyGameABI from './abis/MonopolyGame.json'; // 导入 MonopolyGame ABI
+import UsdtABI from './abis/USDT.json'; // 导入 USDT ABI
 
-const CONTRACT_ADDRESS = '0xYourContractAddress'; // 替换为实际地址
-const USDT_ADDRESS = '0xYourUSDTAddress'; // 替换为实际地址
-const ABI = [/* 粘贴 MonopolyGame.sol 的 ABI */];
+const CONTRACTS = {
+    sepolia: {
+        address: '0xYourSepoliaContractAddress',
+        usdt: '0xYourSepoliaUSDTAddress',
+        abi: MonopolyGameABI, // 使用导入的 ABI
+    },
+    reddioDevnet: {
+        address: '0xYourReddioDevnetContractAddress',
+        usdt: '0x2Dc0A25109caBF353278120E98924D741bd4B177',
+        abi: MonopolyGameABI, // 使用导入的 ABI
+    },
+};
 
 function App() {
     const [account, setAccount] = useState('');
     const [usdtAmount, setUsdtAmount] = useState('');
+    const [network, setNetwork] = useState('sepolia');
     const [players, setPlayers] = useState([]);
     const [web3, setWeb3] = useState(null);
     const [contract, setContract] = useState(null);
+    const [usdtContract, setUsdtContract] = useState(null);
     const [gameStarted, setGameStarted] = useState(false);
     const [currentPlayer, setCurrentPlayer] = useState(null);
 
     useEffect(() => {
         loadWeb3();
-    }, []);
+    }, [network]);
 
     const loadWeb3 = async () => {
         if (window.ethereum) {
             const web3Instance = new Web3(window.ethereum);
             await window.ethereum.enable();
             const accounts = await web3Instance.eth.getAccounts();
+            const chainId = await web3Instance.eth.getChainId();
+            const targetChainId = network === 'sepolia' ? 11155111 : 50341;
+            if (chainId !== targetChainId) {
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: `0x${targetChainId.toString(16)}` }],
+                    });
+                } catch (switchError) {
+                    if (switchError.code === 4902) {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: '0xC485',
+                                chainName: 'Reddio Devnet',
+                                rpcUrls: ['https://reddio-dev.reddio.com'],
+                                nativeCurrency: { name: 'RED', symbol: 'RED', decimals: 18 },
+                                blockExplorerUrls: ['https://reddio-devnet.l2scan.co'],
+                            }],
+                        });
+                    }
+                }
+            }
             setWeb3(web3Instance);
             setAccount(accounts[0]);
-            const contractInstance = new web3Instance.eth.Contract(ABI, CONTRACT_ADDRESS);
+            const contractInstance = new web3Instance.eth.Contract(CONTRACTS[network].abi, CONTRACTS[network].address);
             setContract(contractInstance);
+            const usdtContractInstance = new web3Instance.eth.Contract(UsdtABI, CONTRACTS[network].usdt);
+            setUsdtContract(usdtContractInstance);
         } else {
             alert('Please install MetaMask!');
         }
@@ -40,9 +78,12 @@ function App() {
             alert('Please enter at least 3 USDT');
             return;
         }
-        const amount = web3.utils.toWei(usdtAmount, 'mwei');
+
         try {
-            await contract.methods.joinGame(amount).send({ from: account });
+            const amountWei = web3.utils.toWei(usdtAmount, 'mwei');
+            await usdtContract.methods.approve(CONTRACTS[network].address, amountWei).send({ from: account });
+            await contract.methods.joinGame(amountWei).send({ from: account });
+
             const res = await axios.post('http://localhost:8080/join', {
                 player_id: account,
                 usdt_amount: parseFloat(usdtAmount),
@@ -60,9 +101,7 @@ function App() {
 
     const rollDice = async () => {
         try {
-            const res = await axios.post('http://localhost:8080/roll', {
-                player_id: currentPlayer.id,
-            });
+            const res = await axios.post('http://localhost:8080/roll', { player_id: currentPlayer.id });
             const updatedPlayers = players.map(p =>
                 p.id === res.data.player_id ? { ...p, position: res.data.position } : p
             );
@@ -115,12 +154,12 @@ function App() {
     const endGame = async () => {
         try {
             const res = await axios.post('http://localhost:8080/end');
-            const payouts = res.data.payouts;
+            const usdtPayouts = res.data.usdt_payouts;
             const winner = res.data.winner;
 
-            const addresses = payouts.map(p => p.wallet_addr);
-            const shares = payouts.map(p => web3.utils.toWei(p.usdt.toString(), 'mwei'));
-            await contract.methods.distribute(addresses, shares).send({ from: account });
+            const addresses = usdtPayouts.map(p => p.wallet_addr);
+            const usdtShares = usdtPayouts.map(p => web3.utils.toWei(p.usdt.toString(), 'mwei'));
+            await contract.methods.distribute(addresses, usdtShares).send({ from: account });
 
             alert(`Game ended! Winner: ${winner}`);
             setPlayers([]);
@@ -136,6 +175,10 @@ function App() {
         <div className="app">
             <h1>Monopoly Game</h1>
             <p>Connected Account: {account || 'Not connected'}</p>
+            <select value={network} onChange={(e) => setNetwork(e.target.value)}>
+                <option value="sepolia">Sepolia</option>
+                <option value="reddioDevnet">Reddio Devnet</option>
+            </select>
 
             {!gameStarted ? (
                 <div className="join-section">
@@ -144,7 +187,7 @@ function App() {
                         type="number"
                         value={usdtAmount}
                         onChange={(e) => setUsdtAmount(e.target.value)}
-                        placeholder="Enter USDT amount (min 3)"
+                        placeholder="Enter USDT (min 3)"
                     />
                     <button onClick={joinGame}>Join</button>
                 </div>
