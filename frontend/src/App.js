@@ -112,11 +112,10 @@ function App() {
     };
 
     const rollDice = async () => {
-        if (rolling) return; // 防止重复点击
+        if (rolling) return;
         setRolling(true);
-        setDiceValue(null); // 清空骰子显示
+        setDiceValue(null);
 
-        // 模拟动画，1秒后显示结果
         setTimeout(async () => {
             try {
                 const res = await axios.post('http://localhost:8080/roll', { player_id: currentPlayer.id });
@@ -125,7 +124,7 @@ function App() {
                 );
                 setPlayers(updatedPlayers);
                 setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
-                setDiceValue(res.data.dice); // 显示骰子数字
+                setDiceValue(res.data.dice);
                 setRolling(false);
                 console.log("Dice rolled, value:", res.data.dice, "new position:", res.data.position);
             } catch (error) {
@@ -133,7 +132,7 @@ function App() {
                 alert('Failed to roll dice');
                 setRolling(false);
             }
-        }, 1000); // 动画持续 1 秒
+        }, 1000);
     };
 
     const buyProperty = async () => {

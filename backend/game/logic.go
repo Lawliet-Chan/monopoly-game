@@ -27,7 +27,7 @@ func AddPlayer(id string, usdt float64, coins int64, addr string) *model.Player 
 		USDTLocked: usdt,
 		GameCoins:  coins,
 		WalletAddr: addr,
-		Position:   0,
+		Position:   10, // 初始位置设为 10
 	}
 	players[id] = player
 	totalUSDT += usdt * 0.8
@@ -39,7 +39,7 @@ func MovePlayer(playerID string, dice int) int {
 	if !exists {
 		return 0
 	}
-	player.Position = (player.Position + dice) % 64 // 修改为 64 个地块
+	player.Position = (player.Position + dice) % 61 // 确保使用 61
 	return player.Position
 }
 

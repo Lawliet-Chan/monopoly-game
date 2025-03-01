@@ -8,31 +8,16 @@ function GameBoard({ players }) {
         owner: players.find(p => p.position === idx)?.id || '',
     }));
 
-    // 定义矩形周长路径 (17x15)
-    const width = 17; // 宽（顶部和底部）
-    const height = 15; // 高（左侧和右侧）
-    const perimeter = [];
-
-    // 顶部 (0-16)
-    for (let i = 0; i < width; i++) perimeter.push(i);
-    // 右侧 (17-30)
-    for (let i = 1; i < height - 1; i++) perimeter.push(width - 1 + i * width);
-    // 底部 (31-47)
-    for (let i = width - 1; i >= 0; i--) perimeter.push((height - 1) * width + i);
-    // 左侧 (48-63)
-    for (let i = height - 2; i > 0; i--) perimeter.push(i * width);
-
-    // 确保周长正确闭合
-    if (perimeter.length !== boardSize) {
-        console.error("Perimeter length mismatch:", perimeter.length);
-    }
+    // 定义矩形周长路径 (16x15)
+    const width = 16; // 顶部
+    const height = 15; // 右侧和左侧
 
     return (
         <div className="game-board">
-            <h2>Game Board (64 Tiles - Rectangular Loop)</h2>
+            <h2>Game Board (61 Tiles - Rectangular Loop)</h2>
             <div className="board-container">
                 {board.map((cell, idx) => {
-                    const style = getTileStyle(idx, width, height, boardSize); // 传递 boardSize
+                    const style = getTileStyle(idx, width, height);
                     return (
                         <div
                             key={cell.index}
@@ -41,7 +26,7 @@ function GameBoard({ players }) {
                             title={`Tile ${cell.index + 1}`}
                         >
                             {cell.owner ? (
-                                <span className="player-marker">{cell.owner.slice(0, 6)}</span>
+                                <span className="player-marker">[you]</span>
                             ) : (
                                 <span className="tile-number">{cell.index + 1}</span>
                             )}
@@ -53,30 +38,36 @@ function GameBoard({ players }) {
     );
 }
 
-// 计算地块位置的样式，添加 boardSize 参数
-function getTileStyle(position, width, height, boardSize) {
+// 计算地块位置的样式
+function getTileStyle(position, width, height) {
     const tileSize = 50;
 
+    // 顶部 (0-15)
     if (position < width) {
-        // 顶部
         return { left: `${position * tileSize}px`, top: '0px' };
-    } else if (position < width + height - 2) {
-        // 右侧
+    }
+    // 右侧 (16-30)
+    else if (position < width + height - 1) {
         return {
             left: `${(width - 1) * tileSize}px`,
             top: `${(position - width + 1) * tileSize}px`,
         };
-    } else if (position < width * 2 + height - 3) {
-        // 底部
-        const bottomPos = position - (width + height - 2);
+    }
+    // 底部 (31-45)
+    else if (position < width + height - 1 + width - 1) {
+        const bottomPos = position - (width + height - 1);
         return {
-            left: `${(width - 1 - bottomPos) * tileSize}px`,
+            left: `${(width - 2 - bottomPos) * tileSize}px`, // 从 14 到 0
             top: `${(height - 1) * tileSize}px`,
         };
-    } else {
-        // 左侧
-        const leftPos = boardSize - position - 1;
-        return { left: '0px', top: `${leftPos * tileSize}px` };
+    }
+    // 左侧 (46-60)
+    else {
+        const leftPos = position - (width + height - 1 + width - 1);
+        return {
+            left: '0px',
+            top: `${(height - 1 - leftPos) * tileSize}px`, // 从 13 到 0
+        };
     }
 }
 

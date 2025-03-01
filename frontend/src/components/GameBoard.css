@@ -5,10 +5,10 @@
 
 .board-container {
     position: relative;
-    width: 850px; /* 17 * 50px */
+    width: 800px; /* 16 * 50px */
     height: 750px; /* 15 * 50px */
     margin: 0 auto;
-    background: #f0f0f0; /* 背景色，便于查看边界 */
+    background: #f0f0f0;
 }
 
 .board-cell {
