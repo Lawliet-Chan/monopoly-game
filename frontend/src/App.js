@@ -4,25 +4,20 @@ import Web3 from 'web3';
 import PlayerList from './components/PlayerList';
 import GameBoard from './components/GameBoard';
 import MonopolyGameABI from './abis/MonopolyGame.json'; // 导入 MonopolyGame ABI
-import MockUsdtABI from './abis/MockUSDT.json'; // 导入 MockUSDT ABI
+import MockUsdtABI from './abis/MockUSDT.json';    // 导入 MockUSDT ABI
 
+// 只保留 Reddio Devnet 的配置，使用正确的地址
 const CONTRACTS = {
-    sepolia: {
-        address: '0xYourSepoliaContractAddress',
-        usdt: '0xYourSepoliaUSDTAddress',
-        abi: MonopolyGameABI, // 使用导入的 ABI
-    },
     reddioDevnet: {
-        address: '0x92B0E62e922508814Fe5f4E68670eA32FBB5832e',
-        usdt: '0x2Dc0A25109caBF353278120E98924D741bd4B177',
-        abi: MockUsdtABI, // 使用导入的 ABI
+        address: '0x201f8DB393B397EB9A4B37527a48F5eB5F0a127a', // MonopolyGame 地址
+        usdt: '0x92B0E62e922508814Fe5f4E68670eA32FBB5832e',    // MockUSDT 地址
+        abi: MonopolyGameABI, // 使用 MonopolyGame ABI
     },
 };
 
 function App() {
     const [account, setAccount] = useState('');
     const [usdtAmount, setUsdtAmount] = useState('');
-    const [network, setNetwork] = useState('sepolia');
     const [players, setPlayers] = useState([]);
     const [web3, setWeb3] = useState(null);
     const [contract, setContract] = useState(null);
@@ -32,7 +27,7 @@ function App() {
 
     useEffect(() => {
         loadWeb3();
-    }, [network]);
+    }, []);
 
     const loadWeb3 = async () => {
         if (window.ethereum) {
@@ -40,7 +35,7 @@ function App() {
             await window.ethereum.enable();
             const accounts = await web3Instance.eth.getAccounts();
             const chainId = await web3Instance.eth.getChainId();
-            const targetChainId = network === 'sepolia' ? 11155111 : 50341;
+            const targetChainId = 50341; // Reddio Devnet Chain ID
             if (chainId !== targetChainId) {
                 try {
                     await window.ethereum.request({
@@ -60,14 +55,25 @@ function App() {
                             }],
                         });
                     }
+                    console.error("Failed to switch network:", switchError);
+                    return;
                 }
             }
             setWeb3(web3Instance);
             setAccount(accounts[0]);
-            const contractInstance = new web3Instance.eth.Contract(CONTRACTS[network].abi, CONTRACTS[network].address);
+            const contractInstance = new web3Instance.eth.Contract(
+                CONTRACTS.reddioDevnet.abi, // MonopolyGameABI
+                CONTRACTS.reddioDevnet.address
+            );
             setContract(contractInstance);
-            const usdtContractInstance = new web3Instance.eth.Contract(MockUsdtABI, CONTRACTS[network].usdt);
+            const usdtContractInstance = new web3Instance.eth.Contract(
+                MockUsdtABI, // 使用 MockUsdtABI
+                CONTRACTS.reddioDevnet.usdt
+            );
             setUsdtContract(usdtContractInstance);
+            console.log("Connected to Reddio Devnet with account:", accounts[0]);
+            console.log("MonopolyGame contract initialized at:", CONTRACTS.reddioDevnet.address);
+            console.log("MockUSDT contract initialized at:", CONTRACTS.reddioDevnet.usdt);
         } else {
             alert('Please install MetaMask!');
         }
@@ -81,7 +87,9 @@ function App() {
 
         try {
             const amountWei = web3.utils.toWei(usdtAmount, 'mwei');
-            await usdtContract.methods.approve(CONTRACTS[network].address, amountWei).send({ from: account });
+            console.log("Approving USDT:", amountWei.toString(), "to MonopolyGame:", CONTRACTS.reddioDevnet.address);
+            await usdtContract.methods.approve(CONTRACTS.reddioDevnet.address, amountWei).send({ from: account });
+            console.log("Joining game with USDT:", amountWei.toString());
             await contract.methods.joinGame(amountWei).send({ from: account });
 
             const res = await axios.post('http://localhost:8080/join', {
@@ -93,9 +101,10 @@ function App() {
             setUsdtAmount('');
             setGameStarted(true);
             setCurrentPlayer(res.data);
+            console.log("Player joined:", res.data);
         } catch (error) {
-            console.error(error);
-            alert('Failed to join game');
+            console.error("Join game failed:", error);
+            alert('Failed to join game: ' + (error.message || 'Unknown error'));
         }
     };
 
@@ -107,8 +116,9 @@ function App() {
             );
             setPlayers(updatedPlayers);
             setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
+            console.log("Dice rolled, new position:", res.data.position);
         } catch (error) {
-            console.error(error);
+            console.error("Roll dice failed:", error);
             alert('Failed to roll dice');
         }
     };
@@ -125,9 +135,10 @@ function App() {
                 );
                 setPlayers(updatedPlayers);
                 setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
+                console.log("Property bought at index:", currentPlayer.position);
             }
         } catch (error) {
-            console.error(error);
+            console.error("Buy property failed:", error);
             alert('Failed to buy property');
         }
     };
@@ -144,9 +155,10 @@ function App() {
                 );
                 setPlayers(updatedPlayers);
                 setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
+                console.log("Property sold at index:", currentPlayer.position);
             }
         } catch (error) {
-            console.error(error);
+            console.error("Sell property failed:", error);
             alert('Failed to sell property');
         }
     };
@@ -159,14 +171,16 @@ function App() {
 
             const addresses = usdtPayouts.map(p => p.wallet_addr);
             const usdtShares = usdtPayouts.map(p => web3.utils.toWei(p.usdt.toString(), 'mwei'));
+            console.log("Distributing payouts:", usdtPayouts);
             await contract.methods.distribute(addresses, usdtShares).send({ from: account });
 
             alert(`Game ended! Winner: ${winner}`);
             setPlayers([]);
             setGameStarted(false);
             setCurrentPlayer(null);
+            console.log("Game ended, winner:", winner);
         } catch (error) {
-            console.error(error);
+            console.error("End game failed:", error);
             alert('Failed to end game');
         }
     };
@@ -175,11 +189,6 @@ function App() {
         <div className="app">
             <h1>Monopoly Game</h1>
             <p>Connected Account: {account || 'Not connected'}</p>
-            <select value={network} onChange={(e) => setNetwork(e.target.value)}>
-                <option value="sepolia">Sepolia</option>
-                <option value="reddioDevnet">Reddio Devnet</option>
-            </select>
-
             {!gameStarted ? (
                 <div className="join-section">
                     <h2>Join Game</h2>
