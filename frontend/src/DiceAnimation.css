@@ -1,0 +1,13 @@
+.dice-result {
+    margin-left: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #d32f2f;
+    animation: diceRoll 1s ease-in-out;
+}
+
+@keyframes diceRoll {
+    0% { transform: rotate(0deg); opacity: 0; }
+    50% { transform: rotate(360deg); opacity: 0.5; }
+    100% { transform: rotate(0deg); opacity: 1; }
+}

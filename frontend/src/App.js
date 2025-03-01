@@ -3,15 +3,15 @@ import axios from 'axios';
 import Web3 from 'web3';
 import PlayerList from './components/PlayerList';
 import GameBoard from './components/GameBoard';
-import MonopolyGameABI from './abis/MonopolyGame.json'; // 导入 MonopolyGame ABI
-import MockUsdtABI from './abis/MockUSDT.json';    // 导入 MockUSDT ABI
+import MonopolyGameABI from './abis/MonopolyGame.json';
+import MockUsdtABI from './abis/MockUSDT.json';
+import './DiceAnimation.css'; // 新增骰子动画 CSS
 
-// 只保留 Reddio Devnet 的配置，使用正确的地址
 const CONTRACTS = {
     reddioDevnet: {
         address: '0x201f8DB393B397EB9A4B37527a48F5eB5F0a127a', // MonopolyGame 地址
         usdt: '0x92B0E62e922508814Fe5f4E68670eA32FBB5832e',    // MockUSDT 地址
-        abi: MonopolyGameABI, // 使用 MonopolyGame ABI
+        abi: MonopolyGameABI,
     },
 };
 
@@ -24,6 +24,8 @@ function App() {
     const [usdtContract, setUsdtContract] = useState(null);
     const [gameStarted, setGameStarted] = useState(false);
     const [currentPlayer, setCurrentPlayer] = useState(null);
+    const [diceValue, setDiceValue] = useState(null); // 骰子数字
+    const [rolling, setRolling] = useState(false);    // 骰子动画状态
 
     useEffect(() => {
         loadWeb3();
@@ -35,7 +37,7 @@ function App() {
             await window.ethereum.enable();
             const accounts = await web3Instance.eth.getAccounts();
             const chainId = await web3Instance.eth.getChainId();
-            const targetChainId = 50341; // Reddio Devnet Chain ID
+            const targetChainId = 50341;
             if (chainId !== targetChainId) {
                 try {
                     await window.ethereum.request({
@@ -62,12 +64,12 @@ function App() {
             setWeb3(web3Instance);
             setAccount(accounts[0]);
             const contractInstance = new web3Instance.eth.Contract(
-                CONTRACTS.reddioDevnet.abi, // MonopolyGameABI
+                CONTRACTS.reddioDevnet.abi,
                 CONTRACTS.reddioDevnet.address
             );
             setContract(contractInstance);
             const usdtContractInstance = new web3Instance.eth.Contract(
-                MockUsdtABI, // 使用 MockUsdtABI
+                MockUsdtABI,
                 CONTRACTS.reddioDevnet.usdt
             );
             setUsdtContract(usdtContractInstance);
@@ -92,6 +94,7 @@ function App() {
             console.log("Joining game with USDT:", amountWei.toString());
             await contract.methods.joinGame(amountWei).send({ from: account });
 
+            console.log("Sending request to backend...");
             const res = await axios.post('http://localhost:8080/join', {
                 player_id: account,
                 usdt_amount: parseFloat(usdtAmount),
@@ -109,18 +112,28 @@ function App() {
     };
 
     const rollDice = async () => {
-        try {
-            const res = await axios.post('http://localhost:8080/roll', { player_id: currentPlayer.id });
-            const updatedPlayers = players.map(p =>
-                p.id === res.data.player_id ? { ...p, position: res.data.position } : p
-            );
-            setPlayers(updatedPlayers);
-            setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
-            console.log("Dice rolled, new position:", res.data.position);
-        } catch (error) {
-            console.error("Roll dice failed:", error);
-            alert('Failed to roll dice');
-        }
+        if (rolling) return; // 防止重复点击
+        setRolling(true);
+        setDiceValue(null); // 清空骰子显示
+
+        // 模拟动画，1秒后显示结果
+        setTimeout(async () => {
+            try {
+                const res = await axios.post('http://localhost:8080/roll', { player_id: currentPlayer.id });
+                const updatedPlayers = players.map(p =>
+                    p.id === res.data.player_id ? { ...p, position: res.data.position } : p
+                );
+                setPlayers(updatedPlayers);
+                setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
+                setDiceValue(res.data.dice); // 显示骰子数字
+                setRolling(false);
+                console.log("Dice rolled, value:", res.data.dice, "new position:", res.data.position);
+            } catch (error) {
+                console.error("Roll dice failed:", error);
+                alert('Failed to roll dice');
+                setRolling(false);
+            }
+        }, 1000); // 动画持续 1 秒
     };
 
     const buyProperty = async () => {
@@ -205,7 +218,10 @@ function App() {
                     <GameBoard players={players} />
                     <PlayerList players={players} />
                     <div className="game-controls">
-                        <button onClick={rollDice}>Roll Dice</button>
+                        <button onClick={rollDice} disabled={rolling}>
+                            {rolling ? 'Rolling...' : 'Roll Dice'}
+                        </button>
+                        {diceValue && <span className="dice-result">Dice: {diceValue}</span>}
                         <button onClick={buyProperty}>Buy Property</button>
                         <button onClick={sellProperty}>Sell Property</button>
                         <button onClick={endGame}>End Game</button>

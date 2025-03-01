@@ -9,12 +9,12 @@ var properties = initProperties()
 var totalUSDT float64
 
 func initProperties() []model.Property {
-	// 初始化 16 个地块（4x4 棋盘）
-	props := make([]model.Property, 16)
-	for i := 0; i < 16; i++ {
+	// 初始化 64 个地块
+	props := make([]model.Property, 64)
+	for i := 0; i < 64; i++ {
 		props[i] = model.Property{
 			Index: i,
-			Price: 500, // 每个地块 500 游戏币
+			Price: 500,
 			Owner: "",
 		}
 	}
@@ -39,10 +39,11 @@ func MovePlayer(playerID string, dice int) int {
 	if !exists {
 		return 0
 	}
-	player.Position = (player.Position + dice) % 16 // 循环棋盘
+	player.Position = (player.Position + dice) % 64 // 修改为 64 个地块
 	return player.Position
 }
 
+// 其他函数保持不变
 func BuyProperty(playerID string, propertyIdx int) (bool, string) {
 	player, exists := players[playerID]
 	if !exists {
@@ -77,7 +78,7 @@ func SellProperty(playerID string, propertyIdx int) (bool, string) {
 		return false, "You do not own this property"
 	}
 
-	player.GameCoins += prop.Price / 2 // 卖出时返还一半价格
+	player.GameCoins += prop.Price / 2
 	prop.Owner = ""
 	return true, ""
 }
