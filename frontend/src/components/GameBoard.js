@@ -2,7 +2,7 @@ import React from 'react';
 import './GameBoard.css';
 
 function GameBoard({ players }) {
-    const boardSize = 64; // 64 个地块
+    const boardSize = 61; // 61 个地块
     const board = Array(boardSize).fill(null).map((_, idx) => ({
         index: idx,
         owner: players.find(p => p.position === idx)?.id || '',
