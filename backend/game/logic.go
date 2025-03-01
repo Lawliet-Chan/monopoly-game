@@ -9,9 +9,9 @@ var properties = initProperties()
 var totalUSDT float64
 
 func initProperties() []model.Property {
-	// 初始化 64 个地块
-	props := make([]model.Property, 64)
-	for i := 0; i < 64; i++ {
+	// 初始化 61 个地块
+	props := make([]model.Property, 61)
+	for i := 0; i < 61; i++ {
 		props[i] = model.Property{
 			Index: i,
 			Price: 500,
@@ -27,7 +27,7 @@ func AddPlayer(id string, usdt float64, coins int64, addr string) *model.Player 
 		USDTLocked: usdt,
 		GameCoins:  coins,
 		WalletAddr: addr,
-		Position:   10, // 初始位置设为 10
+		Position:   0, // 初始位置设为 0
 	}
 	players[id] = player
 	totalUSDT += usdt * 0.8
@@ -39,7 +39,7 @@ func MovePlayer(playerID string, dice int) int {
 	if !exists {
 		return 0
 	}
-	player.Position = (player.Position + dice) % 61 // 确保使用 61
+	player.Position = (player.Position + dice) % 61 // 使用 61 确保循环
 	return player.Position
 }
 
