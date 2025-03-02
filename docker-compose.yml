@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000" # 映射前端端口
+    depends_on:
+      - backend
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./frontend:/app # 用于开发时的热重载（可选）
+    networks:
+      - monopoly-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080" # 映射后端端口
+    environment:
+      - GIN_MODE=release
+    volumes:
+      - ./backend:/app # 用于开发时的热重载（可选）
+    networks:
+      - monopoly-network
+
+networks:
+  monopoly-network:
+    driver: bridge
