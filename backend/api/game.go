@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"math/rand"
 	"monopoly-game/game"
 	"net/http"
@@ -20,22 +21,24 @@ func SetupRoutes(r *gin.Engine) {
 func joinGame(c *gin.Context) {
 	var req struct {
 		PlayerID   string  `json:"player_id"`
-		USDTAmount float64 `json:"usdt_amount"`
+		Amount     float64 `json:"usdt_amount"`
 		WalletAddr string  `json:"wallet_addr"`
 	}
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
-	if req.USDTAmount < 3.0 {
+
+	if req.Amount < 3.0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Minimum 3 USDT required"})
 		return
 	}
 
-	operatorShare := req.USDTAmount * 0.2
-	gameCoins := int64((req.USDTAmount - operatorShare) * 1000)
-	player := game.AddPlayer(req.PlayerID, req.USDTAmount, gameCoins, req.WalletAddr)
+	operatorShare := req.Amount * 0.2
+	gameCoins := int64((req.Amount - operatorShare) * 1000)
+	player := game.AddPlayer(req.PlayerID, req.Amount, gameCoins, req.WalletAddr)
 	c.JSON(http.StatusOK, player)
+	fmt.Printf("Player %s joined at position %d\n", req.PlayerID, player.Position)
 }
 
 func rollDice(c *gin.Context) {
@@ -48,13 +51,14 @@ func rollDice(c *gin.Context) {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	dice := rand.Intn(6) + 1 // 1-6
+	dice := rand.Intn(6) + 1
 	newPosition := game.MovePlayer(req.PlayerID, dice)
 	c.JSON(http.StatusOK, gin.H{
 		"player_id": req.PlayerID,
 		"dice":      dice,
 		"position":  newPosition,
 	})
+	fmt.Printf("Player %s: Dice=%d, New Position=%d\n", req.PlayerID, dice, newPosition)
 }
 
 func buyProperty(c *gin.Context) {
@@ -67,12 +71,12 @@ func buyProperty(c *gin.Context) {
 		return
 	}
 
-	success, err := game.BuyProperty(req.PlayerID, req.PropertyIdx)
+	success, price, err := game.BuyProperty(req.PlayerID, req.PropertyIdx)
 	if !success {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Property bought"})
+	c.JSON(http.StatusOK, gin.H{"message": "Property bought", "price": price})
 }
 
 func sellProperty(c *gin.Context) {
@@ -85,25 +89,27 @@ func sellProperty(c *gin.Context) {
 		return
 	}
 
-	success, err := game.SellProperty(req.PlayerID, req.PropertyIdx)
+	success, price, err := game.SellProperty(req.PlayerID, req.PropertyIdx)
 	if !success {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Property sold"})
+	c.JSON(http.StatusOK, gin.H{"message": "Property sold", "price": price})
 }
 
 func endGame(c *gin.Context) {
 	players := game.GetPlayers()
 	totalCoins := game.GetTotalCoins()
 
-	var payouts []struct {
+	var usdtPayouts []struct {
 		WalletAddr string  `json:"wallet_addr"`
 		USDT       float64 `json:"usdt"`
 	}
+	totalUsdt := game.GetTotalUSDT()
+
 	for _, p := range players {
-		usdtShare := (float64(p.GameCoins) / float64(totalCoins)) * game.GetTotalUSDT()
-		payouts = append(payouts, struct {
+		usdtShare := (float64(p.GameCoins) / float64(totalCoins)) * totalUsdt
+		usdtPayouts = append(usdtPayouts, struct {
 			WalletAddr string  `json:"wallet_addr"`
 			USDT       float64 `json:"usdt"`
 		}{p.WalletAddr, usdtShare})
@@ -111,7 +117,7 @@ func endGame(c *gin.Context) {
 
 	winner := game.GetWinner()
 	c.JSON(http.StatusOK, gin.H{
-		"payouts": payouts,
-		"winner":  winner.ID,
+		"usdt_payouts": usdtPayouts,
+		"winner":       winner.ID,
 	})
 }

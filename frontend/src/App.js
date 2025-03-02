@@ -5,14 +5,24 @@ import PlayerList from './components/PlayerList';
 import GameBoard from './components/GameBoard';
 import MonopolyGameABI from './abis/MonopolyGame.json';
 import MockUsdtABI from './abis/MockUSDT.json';
-import './DiceAnimation.css'; // 新增骰子动画 CSS
+import './DiceAnimation.css';
 
 const CONTRACTS = {
     reddioDevnet: {
-        address: '0x201f8DB393B397EB9A4B37527a48F5eB5F0a127a', // MonopolyGame 地址
-        usdt: '0x92B0E62e922508814Fe5f4E68670eA32FBB5832e',    // MockUSDT 地址
+        address: '0x201f8DB393B397EB9A4B37527a48F5eB5F0a127a', // MonopolyGame
+        usdt: '0x92B0E62e922508814Fe5f4E68670eA32FBB5832e',    // MockUSDT
         abi: MonopolyGameABI,
     },
+};
+
+// 为玩家生成随机颜色
+const generateColor = () => {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
 };
 
 function App() {
@@ -24,8 +34,10 @@ function App() {
     const [usdtContract, setUsdtContract] = useState(null);
     const [gameStarted, setGameStarted] = useState(false);
     const [currentPlayer, setCurrentPlayer] = useState(null);
-    const [diceValue, setDiceValue] = useState(null); // 骰子数字
-    const [rolling, setRolling] = useState(false);    // 骰子动画状态
+    const [diceValue, setDiceValue] = useState(null);
+    const [rolling, setRolling] = useState(false);
+    const [playerColors, setPlayerColors] = useState({}); // 玩家颜色映射
+    const [rounds, setRounds] = useState(0); // 回合计数
 
     useEffect(() => {
         loadWeb3();
@@ -74,8 +86,6 @@ function App() {
             );
             setUsdtContract(usdtContractInstance);
             console.log("Connected to Reddio Devnet with account:", accounts[0]);
-            console.log("MonopolyGame contract initialized at:", CONTRACTS.reddioDevnet.address);
-            console.log("MockUSDT contract initialized at:", CONTRACTS.reddioDevnet.usdt);
         } else {
             alert('Please install MetaMask!');
         }
@@ -89,22 +99,23 @@ function App() {
 
         try {
             const amountWei = web3.utils.toWei(usdtAmount, 'mwei');
-            console.log("Approving USDT:", amountWei.toString(), "to MonopolyGame:", CONTRACTS.reddioDevnet.address);
+            console.log("Approving USDT:", amountWei.toString());
             await usdtContract.methods.approve(CONTRACTS.reddioDevnet.address, amountWei).send({ from: account });
             console.log("Joining game with USDT:", amountWei.toString());
             await contract.methods.joinGame(amountWei).send({ from: account });
 
-            console.log("Sending request to backend...");
             const res = await axios.post('http://localhost:8080/join', {
                 player_id: account,
                 usdt_amount: parseFloat(usdtAmount),
                 wallet_addr: account,
             });
-            setPlayers([...players, res.data]);
+            const newPlayer = { ...res.data, color: generateColor() }; // 为新玩家分配颜色
+            setPlayers([...players, newPlayer]);
+            setPlayerColors(prev => ({ ...prev, [newPlayer.id]: newPlayer.color }));
             setUsdtAmount('');
             setGameStarted(true);
-            setCurrentPlayer(res.data);
-            console.log("Player joined:", res.data);
+            setCurrentPlayer(newPlayer);
+            console.log("Player joined:", newPlayer);
         } catch (error) {
             console.error("Join game failed:", error);
             alert('Failed to join game: ' + (error.message || 'Unknown error'));
@@ -126,7 +137,8 @@ function App() {
                 setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
                 setDiceValue(res.data.dice);
                 setRolling(false);
-                console.log("Dice rolled, value:", res.data.dice, "new position:", res.data.position);
+                setRounds(prev => prev + 1); // 增加回合计数
+                console.log("Dice rolled, value:", res.data.dice, "new position:", res.data.position, "round:", rounds + 1);
             } catch (error) {
                 console.error("Roll dice failed:", error);
                 alert('Failed to roll dice');
@@ -143,11 +155,20 @@ function App() {
             });
             if (res.status === 200) {
                 const updatedPlayers = players.map(p =>
-                    p.id === currentPlayer.id ? { ...p, game_coins: p.game_coins - 500 } : p
+                    p.id === currentPlayer.id
+                        ? {
+                            ...p,
+                            game_coins: p.game_coins - res.data.price, // 使用后端返回的价格
+                            ownedProperties: [...(p.ownedProperties || []), {
+                                index: currentPlayer.position,
+                                price: res.data.price,
+                            }],
+                        }
+                        : p
                 );
                 setPlayers(updatedPlayers);
                 setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
-                console.log("Property bought at index:", currentPlayer.position);
+                console.log("Property bought at index:", currentPlayer.position, "price:", res.data.price);
             }
         } catch (error) {
             console.error("Buy property failed:", error);
@@ -163,7 +184,13 @@ function App() {
             });
             if (res.status === 200) {
                 const updatedPlayers = players.map(p =>
-                    p.id === currentPlayer.id ? { ...p, game_coins: p.game_coins + 250 } : p
+                    p.id === currentPlayer.id
+                        ? {
+                            ...p,
+                            game_coins: p.game_coins + res.data.price / 2,
+                            ownedProperties: p.ownedProperties.filter(prop => prop.index !== currentPlayer.position),
+                        }
+                        : p
                 );
                 setPlayers(updatedPlayers);
                 setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
@@ -183,13 +210,13 @@ function App() {
 
             const addresses = usdtPayouts.map(p => p.wallet_addr);
             const usdtShares = usdtPayouts.map(p => web3.utils.toWei(p.usdt.toString(), 'mwei'));
-            console.log("Distributing payouts:", usdtPayouts);
             await contract.methods.distribute(addresses, usdtShares).send({ from: account });
 
             alert(`Game ended! Winner: ${winner}`);
             setPlayers([]);
             setGameStarted(false);
             setCurrentPlayer(null);
+            setRounds(0);
             console.log("Game ended, winner:", winner);
         } catch (error) {
             console.error("End game failed:", error);
@@ -214,7 +241,7 @@ function App() {
                 </div>
             ) : (
                 <div className="game-section">
-                    <GameBoard players={players} />
+                    <GameBoard players={players} playerColors={playerColors} />
                     <PlayerList players={players} />
                     <div className="game-controls">
                         <button onClick={rollDice} disabled={rolling}>
@@ -224,6 +251,7 @@ function App() {
                         <button onClick={buyProperty}>Buy Property</button>
                         <button onClick={sellProperty}>Sell Property</button>
                         <button onClick={endGame}>End Game</button>
+                        <p>Round: {rounds}</p>
                     </div>
                 </div>
             )}

@@ -1,20 +1,25 @@
 package game
 
 import (
+	"math/rand"
 	"monopoly-game/model"
+	"time"
 )
 
 var players = make(map[string]*model.Player)
 var properties = initProperties()
 var totalUSDT float64
+var roundCount int // 回合计数
 
 func initProperties() []model.Property {
-	// 初始化 61 个地块
 	props := make([]model.Property, 61)
 	for i := 0; i < 61; i++ {
+		// 随机初始价格（300-1000）
+		rand.Seed(time.Now().UnixNano())
+		price := 300 + rand.Intn(701)
 		props[i] = model.Property{
 			Index: i,
-			Price: 500,
+			Price: int64(price),
 			Owner: "",
 		}
 	}
@@ -27,7 +32,7 @@ func AddPlayer(id string, usdt float64, coins int64, addr string) *model.Player 
 		USDTLocked: usdt,
 		GameCoins:  coins,
 		WalletAddr: addr,
-		Position:   0, // 初始位置设为 0
+		Position:   0,
 	}
 	players[id] = player
 	totalUSDT += usdt * 0.8
@@ -39,48 +44,57 @@ func MovePlayer(playerID string, dice int) int {
 	if !exists {
 		return 0
 	}
-	player.Position = (player.Position + dice) % 61 // 使用 61 确保循环
+	player.Position = (player.Position + dice) % 61
+	roundCount++
+	if roundCount%5 == 0 { // 每 5 回合涨价
+		increasePropertyPrices()
+	}
 	return player.Position
 }
 
-// 其他函数保持不变
-func BuyProperty(playerID string, propertyIdx int) (bool, string) {
+func increasePropertyPrices() {
+	for i := range properties {
+		properties[i].Price = int64(float64(properties[i].Price) * 1.1) // 涨价 10%
+	}
+}
+
+func BuyProperty(playerID string, propertyIdx int) (bool, int64, string) {
 	player, exists := players[playerID]
 	if !exists {
-		return false, "Player not found"
+		return false, 0, "Player not found"
 	}
 	if propertyIdx < 0 || propertyIdx >= len(properties) {
-		return false, "Invalid property index"
+		return false, 0, "Invalid property index"
 	}
 	prop := &properties[propertyIdx]
 	if prop.Owner != "" {
-		return false, "Property already owned"
+		return false, 0, "Property already owned"
 	}
 	if player.GameCoins < prop.Price {
-		return false, "Insufficient coins"
+		return false, 0, "Insufficient coins"
 	}
 
 	player.GameCoins -= prop.Price
 	prop.Owner = playerID
-	return true, ""
+	return true, prop.Price, ""
 }
 
-func SellProperty(playerID string, propertyIdx int) (bool, string) {
+func SellProperty(playerID string, propertyIdx int) (bool, int64, string) {
 	player, exists := players[playerID]
 	if !exists {
-		return false, "Player not found"
+		return false, 0, "Player not found"
 	}
 	if propertyIdx < 0 || propertyIdx >= len(properties) {
-		return false, "Invalid property index"
+		return false, 0, "Invalid property index"
 	}
 	prop := &properties[propertyIdx]
 	if prop.Owner != playerID {
-		return false, "You do not own this property"
+		return false, 0, "You do not own this property"
 	}
 
 	player.GameCoins += prop.Price / 2
 	prop.Owner = ""
-	return true, ""
+	return true, prop.Price, ""
 }
 
 func GetPlayers() []*model.Player {
