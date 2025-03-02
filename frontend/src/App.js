@@ -7,6 +7,10 @@ import MonopolyGameABI from './abis/MonopolyGame.json';
 import MockUsdtABI from './abis/MockUSDT.json';
 import './DiceAnimation.css';
 
+// 统一配置 API Host
+// const API_HOST = 'http://backend:8080'; // Docker 容器内访问后端服务
+const API_HOST = 'http://localhost:8080';
+
 const CONTRACTS = {
     reddioDevnet: {
         address: '0x201f8DB393B397EB9A4B37527a48F5eB5F0a127a',
@@ -28,7 +32,7 @@ function App() {
     const [account, setAccount] = useState('');
     const [usdtAmount, setUsdtAmount] = useState('');
     const [players, setPlayers] = useState([]);
-    const [properties, setProperties] = useState([]); // 地块数据
+    const [properties, setProperties] = useState([]);
     const [web3, setWeb3] = useState(null);
     const [contract, setContract] = useState(null);
     const [usdtContract, setUsdtContract] = useState(null);
@@ -102,20 +106,19 @@ function App() {
             await usdtContract.methods.approve(CONTRACTS.reddioDevnet.address, amountWei).send({ from: account });
             await contract.methods.joinGame(amountWei).send({ from: account });
 
-            const res = await axios.post('http://localhost:8080/join', {
+            const res = await axios.post(`${API_HOST}/join`, {
                 player_id: account,
                 usdt_amount: parseFloat(usdtAmount),
                 wallet_addr: account,
             });
             const newPlayer = { ...res.data, color: generateColor() };
-            setPlayers([...players, newPlayer]);
-            setPlayerColors(prev => ({ ...prev, [newPlayer.id]: newPlayer.color }));
+            setPlayers([newPlayer]);
+            setPlayerColors({ [newPlayer.id]: newPlayer.color });
             setUsdtAmount('');
             setGameStarted(true);
             setCurrentPlayer(newPlayer);
 
-            // 获取地块数据
-            const propertiesRes = await axios.get('http://localhost:8080/properties');
+            const propertiesRes = await axios.get(`${API_HOST}/properties`);
             setProperties(propertiesRes.data);
             console.log("Player joined:", newPlayer);
         } catch (error) {
@@ -125,24 +128,23 @@ function App() {
     };
 
     const rollDice = async () => {
-        if (rolling) return;
+        if (rolling || !gameStarted) return;
         setRolling(true);
         setDiceValue(null);
 
         setTimeout(async () => {
             try {
-                const res = await axios.post('http://localhost:8080/roll', { player_id: currentPlayer.id });
+                const res = await axios.post(`${API_HOST}/roll`, { player_id: currentPlayer.id });
                 const updatedPlayers = players.map(p =>
                     p.id === res.data.player_id ? { ...p, position: res.data.position } : p
                 );
                 setPlayers(updatedPlayers);
-                setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
+                setCurrentPlayer(updatedPlayers[0]);
                 setDiceValue(res.data.dice);
                 setRolling(false);
                 setRounds(prev => prev + 1);
 
-                // 更新地块价格
-                const propertiesRes = await axios.get('http://localhost:8080/properties');
+                const propertiesRes = await axios.get(`${API_HOST}/properties`);
                 setProperties(propertiesRes.data);
                 console.log("Dice rolled, value:", res.data.dice, "new position:", res.data.position, "round:", rounds + 1);
             } catch (error) {
@@ -154,8 +156,9 @@ function App() {
     };
 
     const buyProperty = async () => {
+        if (!gameStarted) return;
         try {
-            const res = await axios.post('http://localhost:8080/buy', {
+            const res = await axios.post(`${API_HOST}/buy`, {
                 player_id: currentPlayer.id,
                 property_idx: currentPlayer.position,
             });
@@ -173,8 +176,8 @@ function App() {
                         : p
                 );
                 setPlayers(updatedPlayers);
-                setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
-                const propertiesRes = await axios.get('http://localhost:8080/properties');
+                setCurrentPlayer(updatedPlayers[0]);
+                const propertiesRes = await axios.get(`${API_HOST}/properties`);
                 setProperties(propertiesRes.data);
                 console.log("Property bought at index:", currentPlayer.position, "price:", res.data.price);
             }
@@ -185,8 +188,9 @@ function App() {
     };
 
     const sellProperty = async () => {
+        if (!gameStarted) return;
         try {
-            const res = await axios.post('http://localhost:8080/sell', {
+            const res = await axios.post(`${API_HOST}/sell`, {
                 player_id: currentPlayer.id,
                 property_idx: currentPlayer.position,
             });
@@ -201,8 +205,8 @@ function App() {
                         : p
                 );
                 setPlayers(updatedPlayers);
-                setCurrentPlayer(updatedPlayers.find(p => p.id === currentPlayer.id));
-                const propertiesRes = await axios.get('http://localhost:8080/properties');
+                setCurrentPlayer(updatedPlayers[0]);
+                const propertiesRes = await axios.get(`${API_HOST}/properties`);
                 setProperties(propertiesRes.data);
                 console.log("Property sold at index:", currentPlayer.position);
             }
@@ -214,7 +218,7 @@ function App() {
 
     const endGame = async () => {
         try {
-            const res = await axios.post('http://localhost:8080/end');
+            const res = await axios.post(`${API_HOST}/end`);
             const usdtPayouts = res.data.usdt_payouts;
             const winner = res.data.winner;
 
