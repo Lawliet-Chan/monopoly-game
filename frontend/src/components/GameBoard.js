@@ -1,11 +1,12 @@
 import React from 'react';
 import './GameBoard.css';
 
-function GameBoard({ players, playerColors }) {
+function GameBoard({ players, playerColors, properties }) {
     const boardSize = 61;
     const board = Array(boardSize).fill(null).map((_, idx) => ({
         index: idx,
         owner: players.find(p => p.ownedProperties?.some(prop => prop.index === idx))?.id || '',
+        price: properties[idx]?.price || 0, // 从 properties 获取价格
     }));
 
     const width = 16;
@@ -23,12 +24,13 @@ function GameBoard({ players, playerColors }) {
                             key={cell.index}
                             className={`board-cell ${cell.owner ? 'owned' : ''}`}
                             style={{ ...style, backgroundColor: ownerColor || '#e0e0e0' }}
-                            title={`Tile ${cell.index + 1}`}
+                            title={`Tile ${cell.index + 1}: ${cell.price} coins`}
                         >
-                            {players.some(p => p.position === idx) ? (
+              <span className="tile-info">
+                {cell.index + 1}: {cell.price}
+              </span>
+                            {players.some(p => p.position === idx) && (
                                 <span className="player-marker">[you]</span>
-                            ) : (
-                                <span className="tile-number">{cell.index + 1}</span>
                             )}
                         </div>
                     );

@@ -16,6 +16,7 @@ func SetupRoutes(r *gin.Engine) {
 	r.POST("/buy", buyProperty)
 	r.POST("/sell", sellProperty)
 	r.POST("/end", endGame)
+	r.GET("/properties", getProperties) // 新增获取地块数据的 API
 }
 
 func joinGame(c *gin.Context) {
@@ -120,4 +121,10 @@ func endGame(c *gin.Context) {
 		"usdt_payouts": usdtPayouts,
 		"winner":       winner.ID,
 	})
+}
+
+// 新增获取地块数据的 API
+func getProperties(c *gin.Context) {
+	properties := game.GetProperties()
+	c.JSON(http.StatusOK, properties)
 }

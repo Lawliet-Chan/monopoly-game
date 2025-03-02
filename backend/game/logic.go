@@ -9,14 +9,14 @@ import (
 var players = make(map[string]*model.Player)
 var properties = initProperties()
 var totalUSDT float64
-var roundCount int // 回合计数
+var roundCount int
 
 func initProperties() []model.Property {
 	props := make([]model.Property, 61)
 	for i := 0; i < 61; i++ {
-		// 随机初始价格（300-1000）
+		// 随机初始价格（5-20 coins）
 		rand.Seed(time.Now().UnixNano())
-		price := 300 + rand.Intn(701)
+		price := 5 + rand.Intn(16) // 5 到 20
 		props[i] = model.Property{
 			Index: i,
 			Price: int64(price),
@@ -46,7 +46,7 @@ func MovePlayer(playerID string, dice int) int {
 	}
 	player.Position = (player.Position + dice) % 61
 	roundCount++
-	if roundCount%5 == 0 { // 每 5 回合涨价
+	if roundCount%5 == 0 {
 		increasePropertyPrices()
 	}
 	return player.Position
