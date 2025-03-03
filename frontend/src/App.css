@@ -1,0 +1,31 @@
+.app {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.game-section {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+}
+
+.game-controls {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+.dice-result {
+    margin: 0 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #d32f2f;
+}

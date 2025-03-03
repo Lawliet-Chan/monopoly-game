@@ -3,6 +3,7 @@ import axios from 'axios';
 import Web3 from 'web3';
 import PlayerList from './components/PlayerList';
 import GameBoard from './components/GameBoard';
+import Dice from './components/Dice'; // 新增骰子组件
 import MonopolyGameABI from './abis/MonopolyGame.json';
 import MockUsdtABI from './abis/MockUSDT.json';
 import './DiceAnimation.css';
@@ -121,7 +122,7 @@ function App() {
             console.log("Player joined:", newPlayer);
         } catch (error) {
             console.error("Join game failed:", error);
-            alert('Failed to join game: ' + (error.message || 'Unknown error'));
+            alert('Failed to join game: ' + (error.response?.data?.error || error.message || 'Unknown error'));
         }
     };
 
@@ -147,10 +148,10 @@ function App() {
                 console.log("Dice rolled, value:", res.data.dice, "new position:", res.data.position, "round:", rounds + 1);
             } catch (error) {
                 console.error("Roll dice failed:", error);
-                alert('Failed to roll dice');
+                alert('Failed to roll dice: ' + (error.response?.data?.error || error.message || 'Unknown error'));
                 setRolling(false);
             }
-        }, 1000);
+        }, 1000); // 动画时间 1 秒
     };
 
     const buyProperty = async () => {
@@ -181,7 +182,7 @@ function App() {
             }
         } catch (error) {
             console.error("Buy property failed:", error);
-            alert('Failed to buy property');
+            alert('Failed to buy property: ' + (error.response?.data?.error || error.message || 'Unknown error'));
         }
     };
 
@@ -210,7 +211,7 @@ function App() {
             }
         } catch (error) {
             console.error("Sell property failed:", error);
-            alert('Failed to sell property');
+            alert('Failed to sell property: ' + (error.response?.data?.error || error.message || 'Unknown error'));
         }
     };
 
@@ -233,38 +234,44 @@ function App() {
             console.log("Game ended, winner:", winner);
         } catch (error) {
             console.error("End game failed:", error);
-            alert('Failed to end game');
+            alert('Failed to end game: ' + (error.response?.data?.error || error.message || 'Unknown error'));
         }
     };
 
     return (
-        <div className="app">
-            <h1>Monopoly Game</h1>
-            <p>Connected Account: {account || 'Not connected'}</p>
+        <div className="app" style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+            <h1 style={{ margin: '10px 0', textAlign: 'center' }}>Monopoly Game</h1>
+            <p style={{ margin: '0', textAlign: 'center' }}>Connected Account: {account || 'Not connected'}</p>
             {!gameStarted ? (
-                <div className="join-section">
+                <div className="join-section" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                     <h2>Join Game</h2>
                     <input
                         type="number"
                         value={usdtAmount}
                         onChange={(e) => setUsdtAmount(e.target.value)}
                         placeholder="Enter USDT (min 3)"
+                        style={{ margin: '10px', padding: '5px' }}
                     />
-                    <button onClick={joinGame}>Join</button>
+                    <button onClick={joinGame} style={{ padding: '10px 20px' }}>Join</button>
                 </div>
             ) : (
-                <div className="game-section">
-                    <GameBoard players={players} playerColors={playerColors} properties={properties} />
-                    <PlayerList players={players} />
-                    <div className="game-controls">
-                        <button onClick={rollDice} disabled={rolling}>
+                <div className="game-section" style={{ flex: 1, display: 'flex', flexDirection: 'row' }}>
+                    <div style={{ width: '70%', height: '100%' }}>
+                        <GameBoard players={players} playerColors={playerColors} properties={properties} />
+                    </div>
+                    <div style={{ width: '30%', height: '100%', overflowY: 'auto', padding: '10px', backgroundColor: '#f0f0f0' }}>
+                        <PlayerList players={players} />
+                    </div>
+                    <div className="game-controls" style={{ position: 'absolute', bottom: 0, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '10px', backgroundColor: 'rgba(255, 255, 255, 0.8)' }}>
+                        <button onClick={rollDice} disabled={rolling} style={{ margin: '0 10px', padding: '10px 20px' }}>
                             {rolling ? 'Rolling...' : 'Roll Dice'}
                         </button>
-                        {diceValue && <span className="dice-result">Dice: {diceValue}</span>}
-                        <button onClick={buyProperty}>Buy Property</button>
-                        <button onClick={sellProperty}>Sell Property</button>
-                        <button onClick={endGame}>End Game</button>
-                        <p>Round: {rounds}</p>
+                        {rolling && <Dice value={diceValue} />}
+                        {diceValue && !rolling && <span className="dice-result" style={{ margin: '0 10px' }}>🎲 {diceValue}</span>}
+                        <button onClick={buyProperty} style={{ margin: '0 10px', padding: '10px 20px' }}>Buy Property</button>
+                        <button onClick={sellProperty} style={{ margin: '0 10px', padding: '10px 20px' }}>Sell Property</button>
+                        <button onClick={endGame} style={{ margin: '0 10px', padding: '10px 20px' }}>End Game</button>
+                        <p style={{ margin: '0 10px' }}>Round: {rounds}</p>
                     </div>
                 </div>
             )}
