@@ -7,8 +7,6 @@ import MonopolyGameABI from './abis/MonopolyGame.json';
 import MockUsdtABI from './abis/MockUSDT.json';
 import './DiceAnimation.css';
 
-// 统一配置 API Host
-// const API_HOST = 'http://backend:8080'; // Docker 容器内访问后端服务
 const API_HOST = 'http://localhost:8080';
 
 const CONTRACTS = {
