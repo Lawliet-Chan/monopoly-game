@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt" // 添加 fmt 用于调试
 	"math/rand"
 	"monopoly-game/model"
 	"time"
@@ -14,7 +15,6 @@ var roundCount int
 func initProperties() []model.Property {
 	props := make([]model.Property, 61)
 	for i := 0; i < 61; i++ {
-		// 随机初始价格（5-20 coins）
 		rand.Seed(time.Now().UnixNano())
 		price := 5 + rand.Intn(16) // 5 到 20
 		props[i] = model.Property{
@@ -54,7 +54,7 @@ func MovePlayer(playerID string, dice int) int {
 
 func increasePropertyPrices() {
 	for i := range properties {
-		properties[i].Price = int64(float64(properties[i].Price) * 1.1) // 涨价 10%
+		properties[i].Price = int64(float64(properties[i].Price) * 1.1)
 	}
 }
 
@@ -67,6 +67,7 @@ func BuyProperty(playerID string, propertyIdx int) (bool, int64, string) {
 		return false, 0, "Invalid property index"
 	}
 	prop := &properties[propertyIdx]
+	fmt.Printf("BuyProperty: Player %s, Index %d, Current Owner: %s, Price: %d, Player Coins: %d\n", playerID, propertyIdx, prop.Owner, prop.Price, player.GameCoins) // 调试日志
 	if prop.Owner != "" {
 		return false, 0, "Property already owned"
 	}

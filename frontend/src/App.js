@@ -3,7 +3,7 @@ import axios from 'axios';
 import Web3 from 'web3';
 import PlayerList from './components/PlayerList';
 import GameBoard from './components/GameBoard';
-import Dice from './components/Dice'; // 新增骰子组件
+import Dice from './components/Dice';
 import MonopolyGameABI from './abis/MonopolyGame.json';
 import MockUsdtABI from './abis/MockUSDT.json';
 import './DiceAnimation.css';
@@ -151,12 +151,13 @@ function App() {
                 alert('Failed to roll dice: ' + (error.response?.data?.error || error.message || 'Unknown error'));
                 setRolling(false);
             }
-        }, 1000); // 动画时间 1 秒
+        }, 1000);
     };
 
     const buyProperty = async () => {
         if (!gameStarted) return;
         try {
+            console.log("Attempting to buy property at index:", currentPlayer.position, "by player:", currentPlayer.id);
             const res = await axios.post(`${API_HOST}/buy`, {
                 player_id: currentPlayer.id,
                 property_idx: currentPlayer.position,
@@ -179,16 +180,22 @@ function App() {
                 const propertiesRes = await axios.get(`${API_HOST}/properties`);
                 setProperties(propertiesRes.data);
                 console.log("Property bought at index:", currentPlayer.position, "price:", res.data.price);
+                console.log("Updated properties:", propertiesRes.data);
             }
         } catch (error) {
             console.error("Buy property failed:", error);
-            alert('Failed to buy property: ' + (error.response?.data?.error || error.message || 'Unknown error'));
+            const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+            alert('Failed to buy property: ' + errorMessage);
+            // 调试：打印当前地块状态
+            const propertiesRes = await axios.get(`${API_HOST}/properties`);
+            console.log("Current properties after failed buy:", propertiesRes.data);
         }
     };
 
     const sellProperty = async () => {
         if (!gameStarted) return;
         try {
+            console.log("Attempting to sell property at index:", currentPlayer.position, "by player:", currentPlayer.id);
             const res = await axios.post(`${API_HOST}/sell`, {
                 player_id: currentPlayer.id,
                 property_idx: currentPlayer.position,
