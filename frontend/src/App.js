@@ -20,6 +20,7 @@ const CONTRACTS = {
 function App() {
     const [account, setAccount] = useState('');
     const [usdtAmount, setUsdtAmount] = useState('');
+    const [nickname, setNickname] = useState(''); // 新增昵称状态
     const [players, setPlayers] = useState([]);
     const [properties, setProperties] = useState([]);
     const [web3, setWeb3] = useState(null);
@@ -30,7 +31,7 @@ function App() {
     const [diceValue, setDiceValue] = useState(null);
     const [rolling, setRolling] = useState(false);
     const [playerColors, setPlayerColors] = useState({});
-    const [error, setError] = useState(null); // 新增错误状态
+    const [error, setError] = useState(null); // 错误状态
 
     useEffect(() => {
         loadWeb3().catch((err) => {
@@ -77,6 +78,10 @@ function App() {
             setError('Please enter at least 3 USDT');
             return;
         }
+        if (!nickname || nickname.trim() === '') {
+            setError('Please enter a nickname');
+            return;
+        }
         try {
             if (!web3 || !usdtContract) {
                 setError('Web3 or USDT contract not initialized');
@@ -90,16 +95,18 @@ function App() {
                 player_id: account,
                 usdt_amount: parseFloat(usdtAmount),
                 wallet_addr: account,
+                nickname: nickname, // 将昵称发送到后端
             });
-            const newPlayer = { ...res.data, color: generateColor() };
+            const newPlayer = { ...res.data, nickname, color: generateColor() }; // 使用昵称
             setPlayers([newPlayer]);
             setPlayerColors({ [newPlayer.id]: newPlayer.color });
             setUsdtAmount('');
+            setNickname(''); // 清空昵称输入
             setGameStarted(true);
             setCurrentPlayer(newPlayer);
             const propertiesRes = await axios.get(`${API_HOST}/properties`);
             setProperties(propertiesRes.data);
-            setError(null); // 清除错误
+            setError(null);
         } catch (error) {
             setError('Join game failed: ' + (error.response?.data?.error || error.message));
         }
@@ -192,6 +199,13 @@ function App() {
             {!gameStarted ? (
                 <div className="join-section" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
                     <h2>Join Game</h2>
+                    <input
+                        type="text"
+                        value={nickname}
+                        onChange={(e) => setNickname(e.target.value)}
+                        placeholder="Enter your nickname"
+                        style={{ margin: '10px', padding: '5px' }}
+                    />
                     <input
                         type="number"
                         value={usdtAmount}
